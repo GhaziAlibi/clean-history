@@ -83,18 +83,18 @@ jobs:
             -e HOST_UID=$(id -u) -e HOST_GID=$(id -g) \
             archlinux:latest bash -lc '
               set -e
-              # Prepare pacman keyring to avoid pacman-key errors
-              pacman-key --init || true
-              pacman-key --populate archlinux || true
+              # Prepare pacman keyring to avoid pacman-key errors (redirect to stderr)
+              pacman-key --init >&2 || true
+              pacman-key --populate archlinux >&2 || true
 
-              pacman -Syu --noconfirm base-devel
+              pacman -Syu --noconfirm base-devel >&2
 
               # Create group/user with host UID/GID so files remain owned by the runner
-              groupadd -g $HOST_GID builder || true
-              useradd -m -u $HOST_UID -g $HOST_GID builder || true
+              groupadd -g $HOST_GID builder >&2 || true
+              useradd -m -u $HOST_UID -g $HOST_GID builder >&2 || true
 
               # Ensure /pkg is owned by the host UID/GID inside the container
-              chown -R $HOST_UID:$HOST_GID /pkg
+              chown -R $HOST_UID:$HOST_GID /pkg >&2
 
               # Run makepkg as the non-root builder user and print srcinfo
               su - builder -c "cd /pkg && makepkg --printsrcinfo"
