@@ -11,22 +11,31 @@ permissions:
 jobs:
   update-pkgbuild:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: main
+          fetch-depth: 0
 
       - name: Extract version from tag
         id: version
         run: |
-          # Get the tag from the workflow run that triggered this
+          # Get the tag that triggered the release workflow
           git fetch --tags
-          # Get the latest tag
-          TAG=$(git tag --sort=-v:refname | head -n1)
+          # Extract tag from the workflow run that triggered this
+          TAG=$(git describe --tags --exact-match ${{ github.event.workflow_run.head_sha }} 2>/dev/null || echo "")
+
+          # Fallback to latest tag if exact match not found
+          if [ -z "$TAG" ]; then
+            echo "Warning: Could not find exact tag for commit, using latest tag"
+            TAG=$(git tag --sort=-v:refname | head -n1)
+          fi
+
           VERSION=${TAG#v}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Found version: $VERSION"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Found version: $VERSION (tag: $TAG)"
 
       - name: Update PKGBUILD files
         run: |
@@ -37,11 +46,26 @@ jobs:
 
       - name: Download release tarball and update checksums
         run: |
-          # Download the Linux x86_64 tarball
-          wget https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.version }}/clean-history-linux-x86_64.tar.gz
+          # Wait a bit for release assets to be fully available
+          sleep 10
+
+          # Download the Linux x86_64 tarball with retry
+          for i in {1..5}; do
+            if wget -q https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/clean-history-linux-x86_64.tar.gz; then
+              break
+            fi
+            echo "Download attempt $i failed, retrying..."
+            sleep 5
+          done
+
+          if [ ! -f clean-history-linux-x86_64.tar.gz ]; then
+            echo "Error: Failed to download release tarball"
+            exit 1
+          fi
 
           # Calculate SHA256
           SHA256=$(sha256sum clean-history-linux-x86_64.tar.gz | awk '{print $1}')
+          echo "Calculated SHA256: $SHA256"
 
           # Update PKGBUILD-bin with real checksum
           sed -i "s/^sha256sums=.*/sha256sums=('$SHA256')/" PKGBUILD-bin
@@ -55,7 +79,9 @@ jobs:
           git push
 
       - name: Update AUR package
+        if: ${{ secrets.AUR_SSH_PRIVATE_KEY != '' }}
         env:
           AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
         run: |
+          chmod +x ./.github/scripts/update-aur.sh
           ./.github/scripts/update-aur.sh clean-history-bin PKGBUILD-bin ${{ steps.version.outputs.version }}

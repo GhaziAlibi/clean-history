@@ -9,7 +9,7 @@ license=('MIT')
 depends=()
 makedepends=('rust' 'cargo')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/GhaziAlibi/clean-history/archive/v$pkgver.tar.gz")
-sha256sums=('SKIP')  # Update this after first release
+sha256sums=('SKIP')  # Will be updated after release
 
 build() {
     cd "$pkgname-$pkgver"

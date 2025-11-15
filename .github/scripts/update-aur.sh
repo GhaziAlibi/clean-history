@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Script to update AUR package
 # Usage: update-aur.sh <package-name> <pkgbuild-source> <version>
@@ -40,6 +40,13 @@ cd aur-repo
 
 # Copy updated PKGBUILD
 cp "../${PKGBUILD_SOURCE}" PKGBUILD
+
+if [ ! -f PKGBUILD ]; then
+  echo "Error: Failed to copy PKGBUILD from ${PKGBUILD_SOURCE}" >&2
+  exit 1
+fi
+
+echo "Generating .SRCINFO..." >&2
 
 # Generate .SRCINFO using Arch Linux container
 docker run --rm \
