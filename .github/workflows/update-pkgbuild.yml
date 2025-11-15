@@ -54,57 +54,8 @@ jobs:
           git commit -m "chore: update PKGBUILD to v${{ steps.version.outputs.version }}"
           git push
 
-      - name: Setup SSH for AUR
+      - name: Update AUR package
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur
-          chmod 600 ~/.ssh/aur
-          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null
-          # Configure SSH to use the key for AUR
-          cat >> ~/.ssh/config <<EOF
-          Host aur.archlinux.org
-            IdentityFile ~/.ssh/aur
-            User aur
-          EOF
-          chmod 600 ~/.ssh/config
-
-      - name: Clone and update AUR repository (clean-history-bin)
-        run: |
-          # Clone with explicit SSH command
-          GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o IdentitiesOnly=yes" git clone ssh://aur@aur.archlinux.org/clean-history-bin.git aur-repo
-          cd aur-repo
-
-          # Copy updated PKGBUILD-bin as PKGBUILD
-          cp ../PKGBUILD-bin PKGBUILD
-
-          # Generate .SRCINFO using Arch Linux container
-          docker run --rm \
-            -v "$PWD:/pkg" -w /pkg \
-            -e HOST_UID=$(id -u) -e HOST_GID=$(id -g) \
-            archlinux:latest bash -lc '
-              set -e
-              # Prepare pacman keyring to avoid pacman-key errors (redirect to stderr)
-              pacman-key --init >&2 || true
-              pacman-key --populate archlinux >&2 || true
-
-              pacman -Syu --noconfirm base-devel >&2
-
-              # Create group/user with host UID/GID so files remain owned by the runner
-              groupadd -g $HOST_GID builder >&2 || true
-              useradd -m -u $HOST_UID -g $HOST_GID builder >&2 || true
-
-              # Ensure /pkg is owned by the host UID/GID inside the container
-              chown -R $HOST_UID:$HOST_GID /pkg >&2
-
-              # Run makepkg as the non-root builder user and print srcinfo
-              su - builder -c "cd /pkg && makepkg --printsrcinfo"
-            ' > .SRCINFO
-
-          # Configure git (outside Docker)
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Commit and push to AUR (outside Docker)
-          git add PKGBUILD .SRCINFO
-          git diff --cached --quiet || git commit -m "Update to v${{ steps.version.outputs.version }}"
-          GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o IdentitiesOnly=yes" git push
+          ./.github/scripts/update-aur.sh clean-history-bin PKGBUILD-bin ${{ steps.version.outputs.version }}
