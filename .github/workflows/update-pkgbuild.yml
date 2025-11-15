@@ -20,9 +20,10 @@ jobs:
       - name: Extract version from tag
         id: version
         run: |
-          # Get the tag from the workflow run
+          # Get the tag from the workflow run that triggered this
           git fetch --tags
-          TAG=$(git describe --tags --abbrev=0)
+          # Get the latest tag
+          TAG=$(git tag --sort=-v:refname | head -n1)
           VERSION=${TAG#v}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Found version: $VERSION"
