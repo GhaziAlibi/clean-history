@@ -76,11 +76,13 @@ jobs:
           # Copy updated PKGBUILD-bin as PKGBUILD
           cp ../PKGBUILD-bin PKGBUILD
 
-          # Install makepkg dependencies
-          sudo pacman -Syu --noconfirm base-devel
-
-          # Generate .SRCINFO
-          makepkg --printsrcinfo > .SRCINFO
+          # Generate .SRCINFO using Arch Linux container
+          docker run --rm -v "$PWD:/pkg" -w /pkg archlinux:latest bash -c '
+            pacman -Syu --noconfirm base-devel &&
+            useradd -m builder &&
+            chown -R builder:builder /pkg &&
+            su builder -c "makepkg --printsrcinfo" > .SRCINFO
+          '
 
           # Configure git
           git config user.name "github-actions[bot]"
