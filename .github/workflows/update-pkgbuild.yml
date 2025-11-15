@@ -79,6 +79,7 @@ jobs:
 
           # Generate .SRCINFO using Arch Linux container
           docker run --rm -v "$PWD:/pkg" -w /pkg archlinux:latest bash -c '
+            pacman-key --init &&
             pacman -Syu --noconfirm base-devel &&
             useradd -m builder &&
             cp PKGBUILD /home/builder/ &&
@@ -87,11 +88,11 @@ jobs:
             su builder -c "makepkg --printsrcinfo"
           ' > .SRCINFO
 
-          # Configure git
+          # Configure git (outside Docker)
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Commit and push to AUR
+          # Commit and push to AUR (outside Docker)
           git add PKGBUILD .SRCINFO
           git diff --cached --quiet || git commit -m "Update to v${{ steps.version.outputs.version }}"
           GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o IdentitiesOnly=yes" git push
