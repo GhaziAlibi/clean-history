@@ -59,10 +59,18 @@ jobs:
           echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur
           chmod 600 ~/.ssh/aur
           ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null
+          # Configure SSH to use the key for AUR
+          cat >> ~/.ssh/config <<EOF
+          Host aur.archlinux.org
+            IdentityFile ~/.ssh/aur
+            User aur
+          EOF
+          chmod 600 ~/.ssh/config
 
       - name: Clone and update AUR repository (clean-history-bin)
         run: |
-          git clone ssh://aur@aur.archlinux.org/clean-history-bin.git aur-repo
+          # Clone with explicit SSH command
+          GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o IdentitiesOnly=yes" git clone ssh://aur@aur.archlinux.org/clean-history-bin.git aur-repo
           cd aur-repo
 
           # Copy updated PKGBUILD-bin as PKGBUILD
@@ -78,10 +86,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Set SSH command to use the key
-          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o IdentitiesOnly=yes"
-
           # Commit and push to AUR
           git add PKGBUILD .SRCINFO
           git diff --cached --quiet || git commit -m "Update to v${{ steps.version.outputs.version }}"
-          git push
+          GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o IdentitiesOnly=yes" git push
