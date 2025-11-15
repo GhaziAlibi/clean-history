@@ -79,9 +79,12 @@ jobs:
           git push
 
       - name: Update AUR package
-        if: ${{ secrets.AUR_SSH_PRIVATE_KEY != '' }}
         env:
           AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
         run: |
+          if [ -z "$AUR_SSH_PRIVATE_KEY" ]; then
+            echo "Skipping AUR update: AUR_SSH_PRIVATE_KEY not set"
+            exit 0
+          fi
           chmod +x ./.github/scripts/update-aur.sh
           ./.github/scripts/update-aur.sh clean-history-bin PKGBUILD-bin ${{ steps.version.outputs.version }}
