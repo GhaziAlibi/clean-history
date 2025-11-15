@@ -78,15 +78,27 @@ jobs:
           cp ../PKGBUILD-bin PKGBUILD
 
           # Generate .SRCINFO using Arch Linux container
-          docker run --rm -v "$PWD:/pkg" -w /pkg archlinux:latest bash -c '
-            pacman-key --init &&
-            pacman -Syu --noconfirm base-devel &&
-            useradd -m builder &&
-            cp PKGBUILD /home/builder/ &&
-            cd /home/builder &&
-            chown builder:builder PKGBUILD &&
-            su builder -c "makepkg --printsrcinfo"
-          ' > .SRCINFO
+          docker run --rm \
+            -v "$PWD:/pkg" -w /pkg \
+            -e HOST_UID=$(id -u) -e HOST_GID=$(id -g) \
+            archlinux:latest bash -lc '
+              set -e
+              # Prepare pacman keyring to avoid pacman-key errors
+              pacman-key --init || true
+              pacman-key --populate archlinux || true
+
+              pacman -Syu --noconfirm base-devel
+
+              # Create group/user with host UID/GID so files remain owned by the runner
+              groupadd -g $HOST_GID builder || true
+              useradd -m -u $HOST_UID -g $HOST_GID builder || true
+
+              # Ensure /pkg is owned by the host UID/GID inside the container
+              chown -R $HOST_UID:$HOST_GID /pkg
+
+              # Run makepkg as the non-root builder user and print srcinfo
+              su - builder -c "cd /pkg && makepkg --printsrcinfo"
+            ' > .SRCINFO
 
           # Configure git (outside Docker)
           git config user.name "github-actions[bot]"
