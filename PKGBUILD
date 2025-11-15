@@ -1,6 +1,6 @@
 # Maintainer: ALIBI Ghazi <123127137+GhaziAlibi@users.noreply.github.com>
 pkgname=clean-history
-pkgver=0.1.5
+pkgver=0.1.6
 pkgrel=1
 pkgdesc="Clean multiline entries from shell history files"
 arch=('x86_64' 'i686' 'aarch64' 'armv7h')
