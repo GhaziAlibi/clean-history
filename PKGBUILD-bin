@@ -1,6 +1,6 @@
 # Maintainer: ALIBI Ghazi <123127137+GhaziAlibi@users.noreply.github.com>
 pkgname=clean-history-bin
-pkgver=0.1.6
+pkgver=0.1.7
 pkgrel=1
 pkgdesc="Clean multiline entries from shell history files (binary release)"
 arch=('x86_64')
@@ -9,7 +9,7 @@ license=('MIT')
 provides=('clean-history')
 conflicts=('clean-history')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/GhaziAlibi/clean-history/releases/download/v$pkgver/clean-history-linux-x86_64.tar.gz")
-sha256sums=('e4bfd3e96af24efb8ce1dacfdbbe0fdc9393c04495465a85ce1d446feb851beb')
+sha256sums=('41356e58deb1066e2136aacf1fa2166d5f6a709b905254bf7f1b9f9f8801bb9b')
 
 package() {
     install -Dm755 "clean-history" "$pkgdir/usr/bin/clean-history"
